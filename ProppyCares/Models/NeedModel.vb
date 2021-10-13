@@ -25,6 +25,8 @@
     Public Property Status As String
     Public Property ImagePathOne As String
     Public Property ImagePathTwo As String
+    Public Property StrPreferredTimeFrom As String
+    Public Property StrPreferredTimeTo As String
     Public Property CategoryDescription As String
     Public Property MemberMerchantName As String
 End Class

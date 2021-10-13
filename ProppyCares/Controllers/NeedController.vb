@@ -45,7 +45,7 @@ Namespace Controllers
 
         ' DELETE: api/Need/5
         Public Sub DeleteValue(ByVal id As Integer)
-
+            DeleteNeed(id)
         End Sub
 
         Public Function CreateNeed(ByVal needModel As NeedPostModel) As Integer
@@ -128,7 +128,7 @@ Namespace Controllers
                     cmd.Parameters.AddWithValue("@CreatedAt", needModel.CreatedAt)
                     cmd.Parameters.AddWithValue("@UpdatedBy", needModel.UpdatedBy)
                     cmd.Parameters.AddWithValue("@LastUpdated", needModel.LastUpdated)
-                    cmd.Parameters.AddWithValue("@Status", needModel.LastUpdated)
+                    cmd.Parameters.AddWithValue("@Status", needModel.Status)
                     cmd.Parameters.AddWithValue("@ImagePathOne", needModel.ImagePathOne)
                     cmd.Parameters.AddWithValue("@ImagePathTwo", needModel.ImagePathTwo)
                     result = cmd.ExecuteNonQuery()
@@ -139,29 +139,34 @@ Namespace Controllers
         End Function
 
         Public Function GetAllActiveNeeds() As List(Of NeedModel)
-            Return FetchNeedsFromDb("SELECT   A.*,
+            Return FetchNeedsFromDb("SELECT   A.*, CONVERT(varchar(15),CAST(A.PreferredTimeFrom AS TIME),100), 
+                                               CONVERT(varchar(15),CAST(A.PreferredTimeTo AS TIME),100), 
                                                B.description,
                                                C.NAME AS MemberName
                                         FROM   proppycaresneeds A
                                                LEFT JOIN proppycarescategory B
                                                       ON A.categorycode = B.code
                                                LEFT JOIN member C
-                                                      ON A.createdby = C.userid ")
+                                                      ON A.createdby = C.userid 
+                                               Where A.Status = 'New' 
+                                               ORDER  BY A.createdat DESC")
         End Function
 
         Public Function GetNeedsByUser(ByVal UserId As String) As List(Of NeedModel)
-            Return FetchNeedsFromDb("SELECT A.*,
+            Return FetchNeedsFromDb("SELECT A.*, CONVERT(varchar(15),CAST(A.PreferredTimeFrom AS TIME),100), 
+                                               CONVERT(varchar(15),CAST(A.PreferredTimeTo AS TIME),100), 
                                                 B.description,
                                                 '' AS MemberName
                                         FROM   proppycaresneeds A
                                                 JOIN proppycarescategory B
                                                     ON A.categorycode = B.code
-                                        WHERE  A.createdby = '" & UserId & "'
+                                        WHERE  A.createdby = '" & UserId & "'  And A.Status = 'New'
                                         ORDER  BY A.createdat DESC ")
         End Function
 
         Public Function GetGrabbedUserDeals(ByVal UserId As String) As List(Of NeedModel)
-            Return FetchNeedsFromDb("SELECT A.*,
+            Return FetchNeedsFromDb("SELECT A.*, CONVERT(varchar(15),CAST(A.PreferredTimeFrom AS TIME),100), 
+                                               CONVERT(varchar(15),CAST(A.PreferredTimeTo AS TIME),100), 
                                                B.description,
                                                D.company_name AS MerchantName
                                         FROM   proppycaresneeds A
@@ -171,7 +176,7 @@ Namespace Controllers
                                                  ON A.needsid = C.listingid
                                                LEFT JOIN merchants D
                                                       ON D.merchantid = C.assignedto
-                                        WHERE  A.createdby = '" & UserId & "' And C.Status = 'Pending' 
+                                        WHERE  A.createdby = '" & UserId & "' And A.Status = 'New' And C.Status = 'Pending' 
                                         ORDER  BY A.createdat DESC ")
         End Function
 
@@ -189,8 +194,8 @@ Namespace Controllers
                             .ID = Long.Parse(sdr.GetValue(0).ToString()),
                             .BizUnit = sdr.GetValue(CInt(1)).ToString(),
                             .NeedsID = sdr.GetValue(CInt(2)).ToString(),
-                            .Country = sdr.GetValue(CInt(3)).ToString(),
-                            .CategoryCode = sdr.GetValue(CInt(4)).ToString(),
+                            .Country = sdr.GetValue(CInt(4)).ToString(),
+                            .CategoryCode = sdr.GetValue(CInt(3)).ToString(),
                             .State = sdr.GetValue(CInt(5)).ToString(),
                             .District = sdr.GetValue(CInt(6)).ToString(),
                             .Area = sdr.GetValue(CInt(7)).ToString(),
@@ -212,14 +217,31 @@ Namespace Controllers
                             .Status = sdr.GetValue(CInt(23)).ToString(),
                             .ImagePathOne = sdr.GetValue(CInt(24)).ToString(),
                             .ImagePathTwo = sdr.GetValue(CInt(25)).ToString(),
-                            .CategoryDescription = sdr.GetValue(CInt(26)).ToString(),
-                            .MemberMerchantName = sdr.GetValue(CInt(27)).ToString()
+                            .StrPreferredTimeFrom = sdr.GetValue(CInt(26)).ToString(),
+                            .StrPreferredTimeTo = sdr.GetValue(CInt(27)).ToString(),
+                            .CategoryDescription = sdr.GetValue(CInt(28)).ToString(),
+                            .MemberMerchantName = sdr.GetValue(CInt(29)).ToString()
                         })
                     End While
                 End Using
             End Using
 
             Return needs
+        End Function
+
+        Private Function DeleteNeed(ByVal NeedsID As Long) As Integer
+            Dim result As Integer = 0
+
+            Using sqlConnection As SqlConnection = New SqlConnection(connStr)
+                sqlConnection.Open()
+
+                Using cmd As SqlCommand = New SqlCommand("Update ProppyCaresNeeds set Status = 'Deleted' where ID = @NeedsID;", sqlConnection)
+                    cmd.Parameters.AddWithValue("@NeedsID", NeedsID)
+                    result = cmd.ExecuteNonQuery()
+                End Using
+            End Using
+
+            Return result
         End Function
 
     End Class
